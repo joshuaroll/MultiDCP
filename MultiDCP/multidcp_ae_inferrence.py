@@ -22,7 +22,7 @@ from multidcp_ae_utils import *
 import warnings
 warnings.filterwarnings("ignore")
 
-USE_WANDB = False
+USE_WANDB = True
 if USE_WANDB:
     wandb.init(project="MultiDCP_AE_loss")
 else:
@@ -55,6 +55,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    # Data filter is hard coded to one data set
     all_cells = list(pickle.load(open(args.all_cells, 'rb')))
     DATA_FILTER = {"time": "24H", "pert_id": ['BRD-U41416256', 'BRD-U60236422','BRD-U01690642','BRD-U08759356','BRD-U25771771', 'BRD-U33728988', 'BRD-U37049823',
                 'BRD-U44618005', 'BRD-U44700465','BRD-U51951544', 'BRD-U66370498','BRD-U68942961', 'BRD-U73238814',
@@ -112,14 +113,14 @@ if __name__ == '__main__':
         precisionk_list_perturbed_test = [],
     )
 
-    model.load_state_dict(torch.load('best_multidcp_ae_model.pt', map_location = device))
-    # pdb.set_trace()
-    data_save = True
+    # load in best pre-trained model
+    model.load_state_dict(torch.load('../../best_multidcp_ae_model.pt', map_location = device))
 
     epoch_loss = 0
     lb_np_ls = []
     predict_np_ls = []
     hidden_np_ls = []
+    # Why does this section of code take so long? 3s/it 1679 iterations
     with torch.no_grad():
         for i, (ft, lb, _) in enumerate(tqdm(data.test_dataloader())):
             drug = ft['drug']
@@ -138,24 +139,10 @@ if __name__ == '__main__':
         lb_np = np.concatenate(lb_np_ls, axis = 0)
         predict_np = np.concatenate(predict_np_ls, axis = 0)
         hidden_np = np.concatenate(hidden_np_ls, axis = 0)
-        if data_save:
-            genes_cols = sorted_test_input.columns[5:]
-            assert sorted_test_input.shape[0] == predict_np.shape[0]
-            predict_df = pd.DataFrame(predict_np, index = sorted_test_input.index, columns = genes_cols)
-            # hidden_df = pd.DataFrame(hidden_np, index = sorted_test_input.index, columns = [x for x in range(50)])
-            ground_truth_df = pd.DataFrame(lb_np, index = sorted_test_input.index, columns = genes_cols)
-            result_df  = pd.concat([sorted_test_input.iloc[:, :5], predict_df], axis = 1)
-            ground_truth_df = pd.concat([sorted_test_input.iloc[:,:5], ground_truth_df], axis = 1)
-            # hidden_df = pd.concat([sorted_test_input.iloc[:,:5], hidden_df], axis = 1) 
-                    
-            print("=====================================write out data=====================================")
-            result_df.loc[[x for x in range(len(result_df))],:].to_csv(predicted_result_for_testset, index = False)
-            # hidden_df.loc[[x for x in range(len(hidden_df))],:].to_csv(hidden_repr_result_for_testset, index = False)
-            # ground_truth_df.loc[[x for x in range(len(result_df))],:].to_csv('../MultiDCP/data/side_effect/test_for_same.csv', index = False)
-
+        
         test_epoch_end(epoch_loss = epoch_loss, lb_np = lb_np, 
                         predict_np = predict_np, steps_per_epoch = i+1, 
-                        epoch = epoch, metrics_summary = metrics_summary,
+                        epoch = i, metrics_summary = metrics_summary,
                         job = 'perturbed', USE_WANDB = USE_WANDB)
 
 end_time = datetime.now()

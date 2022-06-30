@@ -20,7 +20,7 @@ import warnings
 warnings.filterwarnings("ignore")
 from multidcp_ae_utils import *
 
-USE_WANDB = False
+USE_WANDB = True
 if USE_WANDB:
     wandb.init(project="MultiDCP_AE_loss")
 else:
@@ -214,7 +214,7 @@ if __name__ == '__main__':
     parser.add_argument('--ae_input_file', type=str, default="/raid/home/joshua/MultiDCP/MultiDCP/data/gene_expression_for_ae/gene_expression_combat_norm_978_split4")
     parser.add_argument('--ae_label_file', type=str, default="/raid/home/joshua/MultiDCP/MultiDCP/data/gene_expression_for_ae/gene_expression_combat_norm_978_split4")
     parser.add_argument('--cell_ge_file', type=str, default="/raid/home/joshua/MultiDCP/MultiDCP/data/adjusted_ccle_tcga_ad_tpm_log2.csv", help='the file which used to map cell line to gene expression file')
-    parser.add_argument('--max_epoch', type = int, default=3)
+    parser.add_argument('--max_epoch', type = int, default=3) # default is 500
     parser.add_argument('--predicted_result_for_testset', type=str, default="/raid/home/joshua/MultiDCP/MultiDCP/data/teacher_student/teach_stu_perturbedGX.csv", help = "the file directory to save the predicted test dataframe")
     parser.add_argument('--hidden_repr_result_for_testset', type=str, default="/raid/home/joshua/MultiDCP/MultiDCP/data/teacher_student/teach_stu_perturbedGX_hidden.csv", help = "the file directory to save the test data hidden representation dataframe")
     parser.add_argument('--all_cells', type=str, default="/raid/home/joshua/MultiDCP/MultiDCP/data/ccle_tcga_ad_cells.p")
@@ -284,5 +284,6 @@ if __name__ == '__main__':
     model_training(args, model, data, ae_data, metrics_summary)
     report_final_results(metrics_summary, ae = True, perturbed = True)
     end_time = datetime.now()
-    torch.save(model, './savedmodel_05252022.pt')
+    torch.save(model, './savedmodel_06232022.pt')
+    pickle.dump(model, open('model_06232022.pkl','wb'))
     print(end_time - start_time)

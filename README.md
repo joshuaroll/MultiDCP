@@ -13,7 +13,7 @@ NVIDIA GPU is strongly recommended for speed. CPU is also supported but is slow.
 ```
 cd MultiDCP/script/docker_folder
 docker build --network=host -t multidcp .
-nvidia-docker run --name multidcp -it --privileged=true --network=host --rm -v /path/to/MultiDCP/:/workspace multidc
+nvidia-docker run --name multidcp -it --privileged=true --network=host --rm -v /raid/home/joshua/MultiDCP/:/workspace multidcp
 ```
 
 # Install required packages

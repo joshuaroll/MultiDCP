@@ -82,6 +82,36 @@ def test_epoch_end(epoch_loss, lb_np, predict_np, steps_per_epoch, epoch, metric
         ae_precision_test.append([precision_pos, precision_neg])
     metrics_summary['precisionk_list_{0}_test'.format(job)].append(ae_precision_test)
 
+def test_epoch_end_format(epoch_loss, lb_np, predict_np, steps_per_epoch, epoch, metrics_summary, job, USE_WANDB):
+    output = []
+    output.append('{0} Test loss:'.format(job))
+    output.append(epoch_loss / steps_per_epoch)
+    if USE_WANDB:
+        wandb.log({'{0} Test Loss'.format(job): epoch_loss / steps_per_epoch}, step = epoch)
+    rmse = metric.rmse(lb_np, predict_np)
+    metrics_summary['rmse_list_{0}_test'.format(job)].append(rmse)
+    output.append('{0} RMSE: {1}'.format(job, rmse))
+    if USE_WANDB:
+        wandb.log({'{0} Test RMSE'.format(job): rmse} , step = epoch)
+    pearson, _ = metric.correlation(lb_np, predict_np, 'pearson')
+    metrics_summary['pearson_list_{0}_test'.format(job)].append(pearson)
+    output.append('{0} Pearson\'s correlation: {1}'.format(job, pearson))
+    if USE_WANDB:
+        wandb.log({'{0} Test Pearson'.format(job): pearson}, step = epoch)
+    spearman, _ = metric.correlation(lb_np, predict_np, 'spearman')
+    metrics_summary['spearman_list_{0}_test'.format(job)].append(spearman)
+    output.append('{0} Spearman\'s correlation: {1}'.format(job, spearman))
+    if USE_WANDB:
+        wandb.log({'{0} Test Spearman'.format(job): spearman}, step = epoch)
+    ae_precision_test = []
+    for k in [10, 20, 50, 100]:
+        precision_neg, precision_pos = metric.precision_k(lb_np, predict_np, k)
+        output.append("{0} Precision@{1} Positive: {2}".format(job, k, precision_pos))
+        output.append("{0} Precision@{1} Negative: {2}".format(job, k, precision_neg))
+        ae_precision_test.append([precision_pos, precision_neg])
+    metrics_summary['precisionk_list_{0}_test'.format(job)].append(ae_precision_test)
+    return output
+
 def report_final_results(metrics_summary, ae = False, perturbed = False):
     
     if ae:
@@ -133,3 +163,58 @@ def report_final_results(metrics_summary, ae = False, perturbed = False):
         print("Epoch %d got Perturbed P@100 POS and NEG on test set: %.4f, %.4f" % (best_test_epoch + 1,
                                                                         metrics_summary['precisionk_list_perturbed_test'][best_test_epoch][-1][0],
                                                                         metrics_summary['precisionk_list_perturbed_test'][best_test_epoch][-1][1]))
+
+
+def report_final_results_format(metrics_summary, ae = False, perturbed = False):
+    output = []
+    if ae:
+        best_ae_dev_epoch = np.argmax(metrics_summary['pearson_list_ae_dev'])
+        output.append("Epoch %d got best AE Pearson's correlation on dev set: %.4f" % (best_ae_dev_epoch + 1, metrics_summary['pearson_list_ae_dev'][best_ae_dev_epoch]))
+        output.append("Epoch %d got AE Spearman's correlation on dev set: %.4f" % (best_ae_dev_epoch + 1, metrics_summary['spearman_list_ae_dev'][best_ae_dev_epoch]))
+        output.append("Epoch %d got AE RMSE on dev set: %.4f" % (best_ae_dev_epoch + 1, metrics_summary['rmse_list_ae_dev'][best_ae_dev_epoch]))
+        output.append("Epoch %d got AE P@100 POS and NEG on dev set: %.4f, %.4f" % (best_ae_dev_epoch + 1,
+                                                                        metrics_summary['precisionk_list_ae_dev'][best_ae_dev_epoch][-1][0],
+                                                                        metrics_summary['precisionk_list_ae_dev'][best_ae_dev_epoch][-1][1]))
+
+        output.append("Epoch %d got AE Pearson's correlation on test set w.r.t dev set: %.4f" % (best_ae_dev_epoch + 1, metrics_summary['pearson_list_ae_test'][best_ae_dev_epoch]))
+        output.append("Epoch %d got AE Spearman's correlation on test set w.r.t dev set: %.4f" % (best_ae_dev_epoch + 1, metrics_summary['spearman_list_ae_test'][best_ae_dev_epoch]))
+        output.append("Epoch %d got AE RMSE on test set w.r.t dev set: %.4f" % (best_ae_dev_epoch + 1, metrics_summary['rmse_list_ae_test'][best_ae_dev_epoch]))
+        output.append("Epoch %d got AE P@100 POS and NEG on test set w.r.t dev set: %.4f, %.4f" % (best_ae_dev_epoch + 1,
+                                                                        metrics_summary['precisionk_list_ae_test'][best_ae_dev_epoch][-1][0],
+                                                                        metrics_summary['precisionk_list_ae_test'][best_ae_dev_epoch][-1][1]))
+
+        best_ae_test_epoch = np.argmax(metrics_summary['pearson_list_ae_test'])
+        output.append("Epoch %d got AE best Pearson's correlation on test set: %.4f" % (best_ae_test_epoch + 1, metrics_summary['pearson_list_ae_test'][best_ae_test_epoch]))
+        output.append("Epoch %d got AE Spearman's correlation on test set: %.4f" % (best_ae_test_epoch + 1, metrics_summary['spearman_list_ae_test'][best_ae_test_epoch]))
+        output.append("Epoch %d got AE RMSE on test set: %.4f" % (best_ae_test_epoch + 1, metrics_summary['rmse_list_ae_test'][best_ae_test_epoch]))
+        output.append("Epoch %d got AE P@100 POS and NEG on test set: %.4f, %.4f" % (best_ae_test_epoch + 1,
+                                                                        metrics_summary['precisionk_list_ae_test'][best_ae_test_epoch][-1][0],
+                                                                        metrics_summary['precisionk_list_ae_test'][best_ae_test_epoch][-1][1]))
+
+    if perturbed:
+        best_dev_epoch = np.argmax(metrics_summary['pearson_list_perturbed_dev'])
+        output.append("Epoch %d got best Perturbed Pearson's correlation on dev set: %.4f" % (best_dev_epoch + 1, metrics_summary['pearson_list_perturbed_dev'][best_dev_epoch]))
+        output.append("Epoch %d got Perturbed Spearman's correlation on dev set: %.4f" % (best_dev_epoch + 1, metrics_summary['spearman_list_perturbed_dev'][best_dev_epoch]))
+        output.append("Epoch %d got Perturbed RMSE on dev set: %.4f" % (best_dev_epoch + 1, metrics_summary['rmse_list_perturbed_dev'][best_dev_epoch]))
+        output.append("Epoch %d got Perturbed P@100 POS and NEG on dev set: %.4f, %.4f" % (best_dev_epoch + 1,
+                                                                        metrics_summary['precisionk_list_perturbed_dev'][best_dev_epoch][-1][0],
+                                                                        metrics_summary['precisionk_list_perturbed_dev'][best_dev_epoch][-1][1]))
+
+
+        output.append("Epoch %d got Perturbed Pearson's correlation on test set w.r.t dev set: %.4f" % (best_dev_epoch + 1, metrics_summary['pearson_list_perturbed_test'][best_dev_epoch]))
+        output.append("Epoch %d got Perturbed Spearman's correlation on test set w.r.t dev set: %.4f" % (best_dev_epoch + 1, metrics_summary['spearman_list_perturbed_test'][best_dev_epoch]))
+        output.append("Epoch %d got Perturbed RMSE on test set w.r.t dev set: %.4f" % (best_dev_epoch + 1, metrics_summary['rmse_list_perturbed_test'][best_dev_epoch]))
+        output.append("Epoch %d got Perturbed P@100 POS and NEG on test set w.r.t dev set: %.4f, %.4f" % (best_dev_epoch + 1,
+                                                                        metrics_summary['precisionk_list_perturbed_test'][best_dev_epoch][-1][0],
+                                                                        metrics_summary['precisionk_list_perturbed_test'][best_dev_epoch][-1][1]))
+
+
+        best_test_epoch = np.argmax(metrics_summary['pearson_list_perturbed_test'])
+        output.append("Epoch %d got Perturbed best Pearson's correlation on test set: %.4f" % (best_test_epoch + 1, metrics_summary['pearson_list_perturbed_test'][best_test_epoch]))
+        output.append("Epoch %d got Perturbed Spearman's correlation on test set: %.4f" % (best_test_epoch + 1, metrics_summary['spearman_list_perturbed_test'][best_test_epoch]))
+        output.append("Epoch %d got Perturbed RMSE on test set: %.4f" % (best_test_epoch + 1, metrics_summary['rmse_list_perturbed_test'][best_test_epoch]))
+        output.append("Epoch %d got Perturbed P@100 POS and NEG on test set: %.4f, %.4f" % (best_test_epoch + 1,
+                                                                        metrics_summary['precisionk_list_perturbed_test'][best_test_epoch][-1][0],
+                                                                        metrics_summary['precisionk_list_perturbed_test'][best_test_epoch][-1][1]))
+
+    return output
