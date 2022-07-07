@@ -8,7 +8,6 @@ __pycache__/*
 *.gz
 *.mat
 *.bmp
-*.pt
 *.pdf
 MultiDCP/output/*
 MultiDCP/data/*
@@ -16,5 +15,5 @@ graphs/*
 *history_log*
 *wandb*
 *AMPAD_data*
-MultiDCP/website/test_put.py
-MultiDCP/website/uploads/06212022_signature_test_cell_4_small.csv
+MultiDCP/website/uploads/*
+script/best_multidcp_ae_model_1.pt
