@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Home Page{% endblock %}
+{% block content %}
+<h1>MultiDCP</h1>
+MultiDCP is multi-tasks transfer learning based model. It is desiged to perform multiple tasks including dose-dependent chemical-induced differential gene expression predictions (chemical transcriptomics) and cell viability predictions for de novo drugs and de novo cell lines.
+
+<div class="login">
+    
+    <h1>File Upload</h1>
+    <form method="POST" action="" enctype="multipart/form-data">
+        <p><input type="file" name="file"></p>
+        <p><input type="submit" value="Submit"></p>
+    </form>
+</div>
+<h3> {{ content_insert }} </h3>
+{% endblock %}
+

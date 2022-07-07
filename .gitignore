@@ -8,7 +8,6 @@ __pycache__/*
 *.gz
 *.mat
 *.bmp
-*.html
 *.pt
 *.pdf
 MultiDCP/output/*

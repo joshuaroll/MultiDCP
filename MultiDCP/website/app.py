@@ -47,17 +47,17 @@ def upload_file():
     uploaded_file = request.files['file']
     content_text = "File upload error"
     filename = ''
-    
+
     if uploaded_file.filename != '' and allowed_file(uploaded_file.filename):
         filename = secure_filename(uploaded_file.filename)
         uploaded_file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
         content_text = "File Uploaded!"
-        
-    return render_template("upload.html", content_insert=content_text, file_name_insert=filename)
+        print("Uploaded: " + filename)
+        return render_template('predict.html', content_insert=' \n '.join('{}'.format(item) for item in predict(filename)))
 
+    return render_template("upload.html", content_insert=content_text)
 
-@app.route("/predict") #,methods=['POST'])
-def predict():
+def predict(filename):
     output = []
     # check cuda
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -72,7 +72,7 @@ def predict():
     model_parser.add_argument('--train_file', type=str, default="/home/jrollins/home/MultiDCP/MultiDCP/data/pert_transcriptom/signature_train_cell_1.csv")
     model_parser.add_argument('--dev_file', type=str, default="/home/jrollins/home/MultiDCP/MultiDCP/data/pert_transcriptom/signature_dev_cell_1.csv")
     # File for inference:
-    model_parser.add_argument('--test_file', type=str, default="/home/jrollins/home/MultiDCP/MultiDCP/data/pert_transcriptom/06212022_signature_test_cell_4_small.csv")
+    model_parser.add_argument('--test_file', type=str, default=os.path.join(app.config['UPLOAD_FOLDER'], filename))
     # Additional arguments
     model_parser.add_argument('--batch_size', type = int, default=64)
     model_parser.add_argument('--ae_input_file', type=str, default="/home/jrollins/home/MultiDCP/MultiDCP/data/gene_expression_for_ae/gene_expression_combat_norm_978_split4")
@@ -161,6 +161,8 @@ def predict():
                         epoch = i, metrics_summary = metrics_summary,
                         job = 'perturbed', USE_WANDB = False)   
 
-    return render_template('predict.html', content_insert=' \n '.join('{}'.format(item) for item in output))#"\n".join(map(str, output)))
+    return output
 
-
+@app.route("/contact")
+def contact():
+    return render_template('contact.html')
