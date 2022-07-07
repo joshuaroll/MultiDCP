@@ -1,4 +1,6 @@
 from flask import Flask, redirect, url_for, render_template, request
+from werkzeug.utils import secure_filename
+from werkzeug.datastructures import  FileStorage
 import os
 import pandas as pd
 # os.environ["CUDA_VISIBLE_DEVICES"] = "5"
@@ -10,8 +12,8 @@ from torch import save
 import numpy as np
 
 # import local modules
-sys.path.append('/raid/home/joshua/MultiDCP/MultiDCP/models')
-sys.path.append('/raid/home/joshua/MultiDCP/MultiDCP/utils')
+sys.path.append('/home/jrollins/home/MultiDCP/MultiDCP/models')
+sys.path.append('/home/jrollins/home/MultiDCP/MultiDCP/utils')
 import multidcp, datareader, metric, pdb, pickle
 from scheduler_lr import step_lr
 from loss_utils import apply_NodeHomophily
@@ -29,8 +31,29 @@ def home():
     return render_template("index.html", content_insert="")
     
 if __name__ == "__main__":  
-    app.run(debug=True)
-
+    app.run(host='0.0.0.0',debug=True)
+'''
+@app.route('/upload')
+def upload_file_template():
+   return render_template('upload.html')
+	
+@app.route('/uploader', methods = ['GET', 'POST'])
+def upload_file():
+   if request.method == 'POST':
+      f = request.files['file']
+      f.save(secure_filename(f.filename))
+      return 'file uploaded successfully'
+'''
+@app.route('/', methods=['POST'])
+def upload_file():
+    uploaded_file = request.files['file']
+    content_text = "File upload error"
+    file_name = 'none'
+    if uploaded_file.filename != '':
+        uploaded_file.save(uploaded_file.filename)
+        content_text = "File Uploaded!"
+        file_name = uploaded_file.filename
+    return render_template("upload.html", content_insert=content_text, file_name_insert=file_name)
 
 
 @app.route("/predict") #,methods=['POST'])
@@ -44,19 +67,19 @@ def predict():
     model_parser = argparse.ArgumentParser(description='MultiDCP AE')	
         
     # Train and dev data are just placeholders here
-    model_parser.add_argument('--drug_file', type=str, default="/raid/home/joshua/MultiDCP/MultiDCP/data/all_drugs_l1000.csv")
-    model_parser.add_argument('--gene_file', type=str, default="/raid/home/joshua/MultiDCP/MultiDCP/data/gene_vector.csv")
-    model_parser.add_argument('--train_file', type=str, default="/raid/home/joshua/MultiDCP/MultiDCP/data/pert_transcriptom/signature_train_cell_1.csv")
-    model_parser.add_argument('--dev_file', type=str, default="/raid/home/joshua/MultiDCP/MultiDCP/data/pert_transcriptom/signature_dev_cell_1.csv")
-    model_parser.add_argument('--test_file', type=str, default="/raid/home/joshua/MultiDCP/MultiDCP/data/pert_transcriptom/06212022_signature_test_cell_4_small.csv")
+    model_parser.add_argument('--drug_file', type=str, default="/home/jrollins/home/MultiDCP/MultiDCP/data/all_drugs_l1000.csv")
+    model_parser.add_argument('--gene_file', type=str, default="/home/jrollins/home/MultiDCP/MultiDCP/data/gene_vector.csv")
+    model_parser.add_argument('--train_file', type=str, default="/home/jrollins/home/MultiDCP/MultiDCP/data/pert_transcriptom/signature_train_cell_1.csv")
+    model_parser.add_argument('--dev_file', type=str, default="/home/jrollins/home/MultiDCP/MultiDCP/data/pert_transcriptom/signature_dev_cell_1.csv")
+    model_parser.add_argument('--test_file', type=str, default="/home/jrollins/home/MultiDCP/MultiDCP/data/pert_transcriptom/06212022_signature_test_cell_4_small.csv")
     model_parser.add_argument('--batch_size', type = int, default=64)
-    model_parser.add_argument('--ae_input_file', type=str, default="/raid/home/joshua/MultiDCP/MultiDCP/data/gene_expression_for_ae/gene_expression_combat_norm_978_split4")
-    model_parser.add_argument('--ae_label_file', type=str, default="/raid/home/joshua/MultiDCP/MultiDCP/data/gene_expression_for_ae/gene_expression_combat_norm_978_split4")
-    model_parser.add_argument('--cell_ge_file', type=str, default="/raid/home/joshua/MultiDCP/MultiDCP/data/adjusted_ccle_tcga_ad_tpm_log2.csv", help='the file which used to map cell line to gene expression file')
+    model_parser.add_argument('--ae_input_file', type=str, default="/home/jrollins/home/MultiDCP/MultiDCP/data/gene_expression_for_ae/gene_expression_combat_norm_978_split4")
+    model_parser.add_argument('--ae_label_file', type=str, default="/home/jrollins/home/MultiDCP/MultiDCP/data/gene_expression_for_ae/gene_expression_combat_norm_978_split4")
+    model_parser.add_argument('--cell_ge_file', type=str, default="/home/jrollins/home/MultiDCP/MultiDCP/data/adjusted_ccle_tcga_ad_tpm_log2.csv", help='the file which used to map cell line to gene expression file')
     model_parser.add_argument('--max_epoch', type = int, default=3)
-    model_parser.add_argument('--predicted_result_for_testset', type=str, default="/raid/home/joshua/MultiDCP/MultiDCP/data/teacher_student/teach_stu_perturbedGX.csv", help = "the file directory to save the predicted test dataframe")
-    model_parser.add_argument('--hidden_repr_result_for_testset', type=str, default="/raid/home/joshua/MultiDCP/MultiDCP/data/teacher_student/teach_stu_perturbedGX_hidden.csv", help = "the file directory to save the test data hidden representation dataframe")
-    model_parser.add_argument('--all_cells', type=str, default="/raid/home/joshua/MultiDCP/MultiDCP/data/ccle_tcga_ad_cells.p")
+    model_parser.add_argument('--predicted_result_for_testset', type=str, default="/home/jrollins/home/MultiDCP/MultiDCP/data/teacher_student/teach_stu_perturbedGX.csv", help = "the file directory to save the predicted test dataframe")
+    model_parser.add_argument('--hidden_repr_result_for_testset', type=str, default="/home/jrollins/home/MultiDCP/MultiDCP/data/teacher_student/teach_stu_perturbedGX_hidden.csv", help = "the file directory to save the test data hidden representation dataframe")
+    model_parser.add_argument('--all_cells', type=str, default="/home/jrollins/home/MultiDCP/MultiDCP/data/ccle_tcga_ad_cells.p")
     model_parser.add_argument('--dropout', type=float, default=0.3)
     model_parser.add_argument('--linear_encoder_flag', dest = 'linear_encoder_flag', action='store_true', default=False,
                         help = 'whether the cell embedding layer only have linear layers')
@@ -106,7 +129,7 @@ def predict():
     precisionk_list_ae_dev = [], precisionk_list_ae_test = [], precisionk_list_perturbed_dev = [], precisionk_list_perturbed_test = [])
     
     # Load the state dictionary from previously trained model
-    model.load_state_dict(torch.load('/raid/home/joshua/best_multidcp_ae_model.pt', map_location = device))
+    model.load_state_dict(torch.load('/home/jrollins/home/MultiDCP/MultiDCP/test_website/best_multidcp_ae_model_1.pt', map_location = device))
 
     epoch_loss = 0
     lb_np_ls = []

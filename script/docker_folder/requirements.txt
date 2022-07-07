@@ -2,7 +2,6 @@ certifi==2021.5.30
 cffi==1.14.0
 chardet==3.0.4
 click==8.0.1
-conda==4.8.3
 conda-package-handling==1.7.0
 configparser==5.0.2
 cryptography==2.9.2
