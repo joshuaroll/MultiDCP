@@ -1,4 +1,4 @@
-from flask import Flask, redirect, url_for, render_template, request
+from flask import Flask, redirect, url_for, render_template, request, send_file
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import  FileStorage
 import os
@@ -19,20 +19,30 @@ from scheduler_lr import step_lr
 from loss_utils import apply_NodeHomophily
 from tqdm import tqdm
 from multidcp_ae_utils import *
+from ranking_list import *
 import warnings
+import requests
+import responses
 warnings.filterwarnings("ignore")
 
 UPLOAD_FOLDER = '/home/jrollins/home/MultiDCP/MultiDCP/website/uploads/'
+RESULTS_FOLDER = '/home/jrollins/home/MultiDCP/MultiDCP/website/results/'
 ALLOWED_EXTENSIONS = {'txt', 'csv'}
 
 
 # Initialize flask app
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['RESULTS_FOLDER'] = RESULTS_FOLDER
 
 @app.route("/")
 def home():
-    return render_template("index.html", content_insert="")
+    return render_template("index.html", content_insert=drug_info("tylenol"))
+
+# Get information from DrugBank
+def drug_info(drug_name):
+    r = requests.get("https://www.dgidb.org/api/v2/interactions.json?drugs=" + drug_name)
+    return r.text
     
 if __name__ == "__main__":  
     app.run(host='0.0.0.0',debug=True)
@@ -42,22 +52,52 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+@app.route('/table/<path:csvname>', methods=['GET', 'POST'])
+def table(csvname):
+    # converting csv to html
+    results = os.path.join(app.root_path, app.config['RESULTS_FOLDER'])
+    data = pd.read_csv(results + csvname)
+    return render_template('table.html', tables=[data.to_html()], titles=[''])
+  
+
+
+@app.route('/results/<path:filename>', methods=['GET', 'POST'])
+def download(filename):
+    results = os.path.join(app.root_path, app.config['RESULTS_FOLDER'])
+    print(results)
+    return send_file(results + filename, attachment_filename=filename)
+
+
+# test file 'website/results/results_df_072422.csv'
+@app.route('/rank/<path:filename>', methods=['GET', 'POST'])
+def rank(filename):
+    rank_file = os.path.join(app.root_path, app.config['RESULTS_FOLDER']) + filename
+    ph_topsigs, ph_topinfo, PH_DATA_FILE, PH_RANKED_FILE, PH_TOPSIG_FILE = rank_results(rank_file)
+    return render_template("ranked.html", topsigs=ph_topsigs, topinfo=ph_topinfo, data_filename=PH_DATA_FILE, ranked_filename=PH_RANKED_FILE, topsig_filename=PH_TOPSIG_FILE) # old returns file/possibly use later send_file(results + filename, attachment_filename=filename)
+
+
 @app.route('/', methods=['POST'])
 def upload_file():
-    uploaded_file = request.files['file']
+    uploaded_file_sig = request.files['sig_file']
+    uploaded_file_ge = request.files['basal_ge_file']
     content_text = "File upload error"
-    filename = ''
+    filename_sig, filename_ge = '', ''
 
-    if uploaded_file.filename != '' and allowed_file(uploaded_file.filename):
-        filename = secure_filename(uploaded_file.filename)
-        uploaded_file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    if uploaded_file_sig.filename != '' and allowed_file(uploaded_file_sig.filename): #\
+    #and uploaded_file_ge.filename != '' and allowed_file(uploaded_file_ge.filename):
+        filename_sig = secure_filename(uploaded_file_sig.filename)
+        uploaded_file_sig.save(os.path.join(app.config['UPLOAD_FOLDER'], filename_sig))
+        #filename_ge = secure_filename(uploaded_file_ge.filename)
+        #uploaded_file_ge.save(os.path.join(app.config['UPLOAD_FOLDER'], filename_ge))
+
         content_text = "File Uploaded!"
-        print("Uploaded: " + filename)
-        return render_template('predict.html', content_insert=' \n '.join('{}'.format(item) for item in predict(filename)))
+        filename_ge = 'adjusted_ccle_tcga_ad_tpm_log2.csv'
+        print("Uploaded: " + filename_sig + " and " + filename_ge)
+        return render_template('predict.html', content_insert=' \n '.join('{}'.format(item) for item in predict(filename_sig, filename_ge)))
 
     return render_template("upload.html", content_insert=content_text)
 
-def predict(filename):
+def predict(filename_sig, filename_ge):
     output = []
     # check cuda
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -72,12 +112,12 @@ def predict(filename):
     model_parser.add_argument('--train_file', type=str, default="/home/jrollins/home/MultiDCP/MultiDCP/data/pert_transcriptom/signature_train_cell_1.csv")
     model_parser.add_argument('--dev_file', type=str, default="/home/jrollins/home/MultiDCP/MultiDCP/data/pert_transcriptom/signature_dev_cell_1.csv")
     # File for inference:
-    model_parser.add_argument('--test_file', type=str, default=os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    model_parser.add_argument('--test_file', type=str, default=os.path.join(app.config['UPLOAD_FOLDER'], filename_sig))
     # Additional arguments
     model_parser.add_argument('--batch_size', type = int, default=64)
     model_parser.add_argument('--ae_input_file', type=str, default="/home/jrollins/home/MultiDCP/MultiDCP/data/gene_expression_for_ae/gene_expression_combat_norm_978_split4")
     model_parser.add_argument('--ae_label_file', type=str, default="/home/jrollins/home/MultiDCP/MultiDCP/data/gene_expression_for_ae/gene_expression_combat_norm_978_split4")
-    model_parser.add_argument('--cell_ge_file', type=str, default="/home/jrollins/home/MultiDCP/MultiDCP/data/adjusted_ccle_tcga_ad_tpm_log2.csv", help='the file which used to map cell line to gene expression file')
+    model_parser.add_argument('--cell_ge_file', type=str, default=os.path.join(app.config['UPLOAD_FOLDER'], filename_ge), help='the file which used to map cell line to gene expression file')
     model_parser.add_argument('--max_epoch', type = int, default=3)
     model_parser.add_argument('--predicted_result_for_testset', type=str, default="/home/jrollins/home/MultiDCP/MultiDCP/data/teacher_student/teach_stu_perturbedGX.csv", help = "the file directory to save the predicted test dataframe")
     model_parser.add_argument('--hidden_repr_result_for_testset', type=str, default="/home/jrollins/home/MultiDCP/MultiDCP/data/teacher_student/teach_stu_perturbedGX_hidden.csv", help = "the file directory to save the test data hidden representation dataframe")
@@ -96,6 +136,7 @@ def predict(filename):
                     "pert_type": ["trt_cp"],
                     "cell_id": all_cells,# ['A549', 'MCF7', 'HCC515', 'HEPG2', 'HS578T', 'PC3', 'SKBR3', 'MDAMB231', 'JURKAT', 'A375', 'BT20', 'HELA', 'HT29', 'HA1E', 'YAPC'],
                     "pert_idose": ["0.04 um", "0.12 um", "0.37 um", "1.11 um", "3.33 um", "10.0 um"]}
+    sorted_test_input = pd.read_csv(args.test_file).sort_values(['pert_id', 'pert_type', 'cell_id', 'pert_idose'])
 
     # Load data with the autoencoder
     ae_data = datareader.AEDataLoader(device, args)
@@ -131,7 +172,10 @@ def predict(filename):
     precisionk_list_ae_dev = [], precisionk_list_ae_test = [], precisionk_list_perturbed_dev = [], precisionk_list_perturbed_test = [])
     
     # Load the state dictionary from previously trained model
-    model.load_state_dict(torch.load('/home/jrollins/home/MultiDCP/MultiDCP/website/best_multidcp_ae_model_1.pt', map_location = device))
+    model.load_state_dict(torch.load('/home/jrollins/home/MultiDCP/MultiDCP/website/MultiDCP_data/yoyo_07172022/1013rand1.pt', map_location = device))
+    loc_predicted_result_for_testset = '/home/jrollins/home/MultiDCP/MultiDCP/website/results/' # Folder to save results
+    results_name = 'results_df_' + datetime.now().strftime('%m%d%y%H%M') + '.csv'
+    data_save = True
 
     epoch_loss = 0
     lb_np_ls = []
@@ -151,17 +195,29 @@ def predict(filename):
             lb_np_ls.append(lb.cpu().numpy()) 
             predict_np_ls.append(predict.cpu().numpy()) 
             hidden_np_ls.append(cells_hidden_repr.cpu().numpy()) 
+            
 
         lb_np = np.concatenate(lb_np_ls, axis = 0)
         predict_np = np.concatenate(predict_np_ls, axis = 0)
         hidden_np = np.concatenate(hidden_np_ls, axis = 0)
-        
-        output += test_epoch_end_format(epoch_loss = epoch_loss, lb_np = lb_np, 
-                        predict_np = predict_np, steps_per_epoch = i+1, 
-                        epoch = i, metrics_summary = metrics_summary,
-                        job = 'perturbed', USE_WANDB = False)   
+        if data_save:
+            genes_cols = sorted_test_input.columns[5:]
+            print(sorted_test_input.shape)
+            print(predict_np.shape)
+            #assert sorted_test_input.shape[0] == predict_np.shape[0] # ensure nothing gets filtered out, no testing data is out of research scope
+            predict_df = pd.DataFrame(predict_np, columns = genes_cols)
+            # hidden_df = pd.DataFrame(hidden_np, index = sorted_test_input.index, columns = [x for x in range(50)])
+            ground_truth_df = pd.DataFrame(lb_np, columns = genes_cols)
+            result_df  = pd.concat([sorted_test_input.iloc[:, :5], predict_df], axis = 1)
+            ground_truth_df = pd.concat([sorted_test_input.iloc[:,:5], ground_truth_df], axis = 1)
+            # hidden_df = pd.concat([sorted_test_input.iloc[:,:5], hidden_df], axis = 1) 
+                    
+            print("=====================================write out data=====================================")
+            result_df.loc[[x for x in range(len(result_df))],:].to_csv(loc_predicted_result_for_testset + results_name, index = False)
+            # hidden_df.loc[[x for x in range(len(hidden_df))],:].to_csv(hidden_repr_result_for_testset, index = False)
+            # ground_truth_df.loc[[x for x in range(len(result_df))],:].to_csv('../MultiDCP/data/side_effect/test_for_same.csv', index = False)
 
-    return output
+    return result_df.head(20)
 
 @app.route("/contact")
 def contact():
