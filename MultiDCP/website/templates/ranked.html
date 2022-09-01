@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Ranked Results{% endblock %}
+{% block content %}
+<html>
+   <body>
+        Files Produced: {{ data_filename }}, {{ ranked_filename }}, {{ topsig_filename }}
+
+        <h2> Results from MultiDCP: </h2>
+        <h3> {{ topsigs }} </h3>
+
+        <h3> {{ topinfo }} </h3>
+   </body>
+</html>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Table{% endblock %}
+{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title> Table </title>			
+	</head>
+	<body>
+        
+    <a class="nav-link" href="results/results_df_072422.csv">Download Results from 07/24/2022</a>
+		<div align="center">
+			<table id="data" class="table table-striped">
+				<h1>
+				<!--Displaying the converted table-->
+					{% for table in tables %}
+					<h2>{{titles[loop.index]}}</h2>							
+					{{ table|safe }}
+					{% endfor %}	
+				</h1>
+			</table>
+		</div>
+	</body>
+</html>
+{% endblock %}

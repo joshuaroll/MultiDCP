@@ -6,12 +6,18 @@ MultiDCP is multi-tasks transfer learning based model. It is desiged to perform 
 
 <div class="login">
     
-    <h1>File Upload</h1>
+    <h1>Upload Test File</h1>
     <form method="POST" action="" enctype="multipart/form-data">
-        <p><input type="file" name="file"></p>
+        <p><input type="file" name="sig_file"> — Signature File</p>
+        <p><input type="file" name="basal_ge_file"> — Disease State (Basal Gene Expression)</p>
         <p><input type="submit" value="Submit"></p>
     </form>
 </div>
-<h3> {{ content_insert }} </h3>
+
+<a class="nav-link" href="results/results_df_072422.csv">Download Results from 07/24/2022</a>
+<a class="nav-link" href="rank/results_df_072422.csv">Calculate Results from 07/24/2022</a>
+<a class="nav-link" href="table/results_df_072422.csv">Display Table of Results from 07/24/2022</a>
+
+{{ content_insert }}
 {% endblock %}
 
