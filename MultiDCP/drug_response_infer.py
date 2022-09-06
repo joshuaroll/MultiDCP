@@ -20,8 +20,8 @@ from collections import defaultdict
 
 
 # check cuda
-# device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-# print("Use GPU: %s" % torch.cuda.is_available())
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+print("Use GPU: %s" % torch.cuda.is_available())
 
 def initialize_model_registry():
 
@@ -163,28 +163,28 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MultiDCP Ehill pretraining')
     parser.add_argument('--device',type=int, default=7)
     #parser.add_argument('--drug_file',type = str, default = 'MultiDCP_data/data/all_drugs_l1000.csv')
-    parser.add_argument('--drug_file',type = str, default = 'MultiDCP_data/data/53_drugs.csv')
-    parser.add_argument('--gene_file', type = str, default ='MultiDCP_data/data/gene_vector.csv')
+    parser.add_argument('--drug_file',type = str, default = '/home/jrollins/home/data/MultiDCP_data/all_drugs_l1000.csv') #53_drugs.csv')
+    parser.add_argument('--gene_file', type = str, default ='/home/jrollins/home/data/MultiDCP_data/gene_vector.csv')
     parser.add_argument('--dropout', type = float, default = 0.1)
-    parser.add_argument('--hill_train_file', type = str,default = 'MultiDCP_data/data/ehill_data/high_confident_data_train.csv')
-    parser.add_argument('--hill_dev_file', type = str,default = 'MultiDCP_data/data/ehill_data/high_confident_data_dev.csv')
-    parser.add_argument('--hill_test_file', type = str,default =  '/raid/home/yoyowu/MultiDCP/MultiDCP_data/data/ehill_data/sampled_hc2_test_data.csv')
+    parser.add_argument('--hill_train_file', type = str,default = '/home/jrollins/home/data/MultiDCP_data/ehill_data/high_confident_data_train.csv')
+    parser.add_argument('--hill_dev_file', type = str,default = '/home/jrollins/home/data/MultiDCP_data/ehill_data/high_confident_data_dev.csv')
+    parser.add_argument('--hill_test_file', type = str,default =  '/home/jrollins/home/data/MultiDCP_data/ehill_data/sampled_hc2_test_data.csv')
     #parser.add_argument('--hill_test_file', type = str,default =  'MultiDCP_data/data/ehill_data/high_confident_data_dev.csv')
    
     parser.add_argument('--batch_size', type = int, default = 64)
     parser.add_argument('--max_epoch', type=int, default = 1)
-    parser.add_argument('--all_cells',type = str, default = 'MultiDCP_data/data/ehill_data/pretrain_cell_list_ehill.p')
+    parser.add_argument('--all_cells',type = str, default = '/home/jrollins/home/data/MultiDCP_data/ehill_data/pretrain_cell_list_ehill.p')
     #parser.add_argument('--cell_ge_file', type = str,help='the file which used to map cell line to gene expression file', default = 'MultiDCP_data/data/adjusted_ccle_tcga_ad_tpm_log2.csv')
-    parser.add_argument('--cell_ge_file', type = str,help='the file which used to map cell line to gene expression file', default = '/raid/home/yoyowu/MultiDCP/MultiDCP_data/data/h2c_ccle_tcga_ad_batch_removal.csv')
+    parser.add_argument('--cell_ge_file', type = str,help='the file which used to map cell line to gene expression file', default = '/home/jrollins/home/data/MultiDCP_data/ehill_data/h2c_ccle_tcga_ad_batch_removal.csv')
     parser.add_argument('--linear_encoder_flag', dest = 'linear_encoder_flag', action='store_true', default=False,
                         help = 'whether the cell embedding layer only have linear layers')
     parser.add_argument('--save_path',type=str, default='')
-    parser.add_argument('--trained_model_path',type = str,default='/raid/home/yoyowu/MultiDCP/saved_models/1013_ehill_rand2.pt')
-    parser.add_argument('--predicted_result_for_testset',type=str, default='/raid/home/yoyowu/MultiDCP/MultiDCP_data/data/predictions/0822test.csv')
+    parser.add_argument('--trained_model_path',type = str,default='/home/jrollins/home/projects/MultiDCP/trained_models/1013_ehill_rand2.pt')
+    parser.add_argument('--predicted_result_for_testset',type=str, default='/home/jrollins/home/data/MultiDCP_data/predictions/090522test.csv')
     
     args = parser.parse_args()
 
-    device = torch.device("cuda:" + str(args.device)) if torch.cuda.is_available() else torch.device("cpu")
+    device = torch.device("cuda:" + str(args.device)) if torch.cuda.is_available() else torch.device('cpu')
     all_cells = list(pickle.load(open(args.all_cells, 'rb')))
     DATA_FILTER = {"time": "24H", "pert_id": ['BRD-U41416256', 'BRD-U60236422'], "pert_type": ["trt_cp"],
         "cell_id": all_cells,
@@ -213,7 +213,7 @@ if __name__ == '__main__':
     model = multidcp.MultiDCPEhillPretraining(device=device, model_param_registry=model_param_registry)
     model.init_weights(pretrained = None)
     if args.trained_model_path is not None:
-        model.load_state_dict(torch.load(args.trained_model_path))
+        model.load_state_dict(torch.load(args.trained_model_path, map_location=device))
         print(f'successfully loaded the model from{args.trained_model_path}')
     model.to(device)
     model = model.double()
